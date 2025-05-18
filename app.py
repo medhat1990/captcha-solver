@@ -1,3 +1,4 @@
+import os
 import cv2
 import numpy as np
 import onnxruntime as ort
@@ -13,7 +14,7 @@ import uuid
 onnx_model_path = "char_cnn_model.onnx"
 session = ort.InferenceSession(onnx_model_path)
 
-# التصنيفات بشكل مباشر (عددها 32، وتجاهلنا "full_images")
+# التصنيفات (31 رمز بدون full_images)
 class_labels = ['2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F',
                 'G', 'H', 'J', 'K', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'U', 'V',
                 'W', 'X', 'Y', 'Z']
@@ -96,3 +97,8 @@ def predict():
 @app.route("/")
 def index():
     return "✅ Model is up and running!"
+
+# ⬅️ هذا السطر هو المفتاح للتشغيل على Railway
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
