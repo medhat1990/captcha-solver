@@ -1,7 +1,6 @@
 flask
 flask-cors
 onnxruntime
-opencv-python
-pillow
 numpy
-waitress
+Pillow
+opencv-python-headless
