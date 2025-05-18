@@ -1,3 +1,4 @@
+import os
 import cv2
 import numpy as np
 import onnxruntime as ort
@@ -13,11 +14,10 @@ import uuid
 onnx_model_path = "char_cnn_model.onnx"
 session = ort.InferenceSession(onnx_model_path)
 
-# التصنيفات ثابتة داخل الكود
-class_labels = ['2', '3', '4', '5', '6', '7', '8', '9',
-                'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
-                'J', 'K', 'M', 'N', 'P', 'Q', 'R', 'S',
-                'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
+# التصنيفات (31 رمز بدون full_images)
+class_labels = ['2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F',
+                'G', 'H', 'J', 'K', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'U', 'V',
+                'W', 'X', 'Y', 'Z']
 
 def preprocess_char(img, size=64):
     img = cv2.resize(img, (size, size))
@@ -33,7 +33,8 @@ def convert_gif_to_static(image):
         merged_array = np.minimum(merged_array, frame_array)
     final_image = Image.fromarray(merged_array)
     final_image = ImageEnhance.Contrast(final_image).enhance(2.0)
-    final_image = final_image.point(lambda p: 0 if p < 180 else 255)
+    threshold = 180
+    final_image = final_image.point(lambda p: 0 if p < threshold else 255)
     return final_image.convert("L")
 
 def predict_captcha_from_pil(image):
@@ -47,6 +48,7 @@ def predict_captcha_from_pil(image):
     sorted_cnts = sorted(filtered, key=lambda c: cv2.boundingRect(c)[0])[:5]
 
     label_predicted = ""
+
     for cnt in sorted_cnts:
         x, y, w, h = cv2.boundingRect(cnt)
         x, y = max(x - 2, 0), max(y - 2, 0)
@@ -60,9 +62,9 @@ def predict_captcha_from_pil(image):
 
     return label_predicted
 
-# إعداد Flask + CORS
+# إعداد خادم Flask
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})
+CORS(app)
 
 @app.route("/predict", methods=["POST"])
 def predict():
@@ -86,20 +88,17 @@ def predict():
         elapsed_time = time.time() - start_time
 
         print(f"📝 Prediction: {result} | ⏱️ {elapsed_time:.3f}s | 🔑 Request ID: {request_id}")
-        response = jsonify({"text": result, "time": round(elapsed_time, 3), "request_id": request_id})
-        response.headers.add("Access-Control-Allow-Origin", "*")
-        return response
+        return jsonify({"text": result, "time": round(elapsed_time, 3), "request_id": request_id})
 
     except Exception as e:
         print(f"❌ Error: {e}")
-        response = jsonify({"error": str(e)})
-        response.headers.add("Access-Control-Allow-Origin", "*")
-        return response, 500
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/")
 def index():
     return "✅ Model is up and running!"
 
+# ⬅️ هذا السطر هو المفتاح للتشغيل على Railway
 if __name__ == "__main__":
-    from waitress import serve
-    serve(app, host="0.0.0.0", port=8080)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
