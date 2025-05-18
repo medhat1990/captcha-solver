@@ -1,7 +1,7 @@
 {
   "build": {
     "nixpacks": {
-      "packages": ["libgl1"]
+      "packages": ["libgl1-mesa-glx"]
     }
   }
 }
