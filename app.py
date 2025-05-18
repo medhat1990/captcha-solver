@@ -48,6 +48,7 @@ def predict_captcha_from_pil(image):
     sorted_cnts = sorted(filtered, key=lambda c: cv2.boundingRect(c)[0])[:5]
 
     label_predicted = ""
+
     for cnt in sorted_cnts:
         x, y, w, h = cv2.boundingRect(cnt)
         x, y = max(x - 2, 0), max(y - 2, 0)
@@ -61,6 +62,7 @@ def predict_captcha_from_pil(image):
 
     return label_predicted
 
+# إعداد خادم Flask
 app = Flask(__name__)
 CORS(app)
 
@@ -96,7 +98,7 @@ def predict():
 def index():
     return "✅ Model is up and running!"
 
-# ✅ استخدام waitress للإنتاج
+# ⬅️ هذا السطر هو المفتاح للتشغيل على Railway
 if __name__ == "__main__":
-    from waitress import serve
-    serve(app, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
