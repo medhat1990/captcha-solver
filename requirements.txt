@@ -4,3 +4,4 @@ onnxruntime
 numpy
 Pillow
 opencv-python-headless
+waitress
