@@ -11,9 +11,12 @@ import time
 
 # تحميل النموذج
 session = ort.InferenceSession("char_cnn_model.onnx")
-class_labels = ['2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F',
-                'G', 'H', 'J', 'K', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'U', 'V',
-                'W', 'X', 'Y', 'Z']
+
+# ✅ تحميل التصنيفات تلقائياً من أسماء المجلدات داخل مجلد characters
+class_labels = sorted([
+    name for name in os.listdir("characters")
+    if os.path.isdir(os.path.join("characters", name))
+])
 
 def preprocess_char(img, size=64):
     img = cv2.resize(img, (size, size))
