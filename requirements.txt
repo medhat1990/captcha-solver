@@ -1,8 +1,7 @@
 flask
-flask-cors
+flask-socketio
 onnxruntime
 numpy
 Pillow
 opencv-python-headless
-flask-socketio
 eventlet
