@@ -4,17 +4,16 @@ import numpy as np
 import onnxruntime as ort
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from flask_socketio import SocketIO, emit
 from PIL import Image, ImageEnhance, ImageSequence
 import base64
 from io import BytesIO
 import time
 import uuid
 
-# تحميل نموذج ONNX
 onnx_model_path = "char_cnn_model.onnx"
 session = ort.InferenceSession(onnx_model_path)
 
-# التصنيفات (31 رمز بدون full_images)
 class_labels = ['2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F',
                 'G', 'H', 'J', 'K', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'U', 'V',
                 'W', 'X', 'Y', 'Z']
@@ -48,7 +47,6 @@ def predict_captcha_from_pil(image):
     sorted_cnts = sorted(filtered, key=lambda c: cv2.boundingRect(c)[0])[:5]
 
     label_predicted = ""
-
     for cnt in sorted_cnts:
         x, y, w, h = cv2.boundingRect(cnt)
         x, y = max(x - 2, 0), max(y - 2, 0)
@@ -62,9 +60,13 @@ def predict_captcha_from_pil(image):
 
     return label_predicted
 
-# إعداد خادم Flask
 app = Flask(__name__)
 CORS(app)
+socketio = SocketIO(app, cors_allowed_origins="*")  # WebSocket
+
+@app.route("/")
+def index():
+    return "✅ Model is up and running with WebSocket!"
 
 @app.route("/predict", methods=["POST"])
 def predict():
@@ -89,16 +91,30 @@ def predict():
 
         print(f"📝 Prediction: {result} | ⏱️ {elapsed_time:.3f}s | 🔑 Request ID: {request_id}")
         return jsonify({"text": result, "time": round(elapsed_time, 3), "request_id": request_id})
-
     except Exception as e:
         print(f"❌ Error: {e}")
         return jsonify({"error": str(e)}), 500
 
-@app.route("/")
-def index():
-    return "✅ Model is up and running!"
+@socketio.on("predict_image")
+def handle_predict_image(data):
+    try:
+        image_data = data.get("image", "")
+        if "," in image_data:
+            image_data = image_data.split(",")[1]
+
+        image_bytes = base64.b64decode(image_data + '=' * (-len(image_data) % 4))
+        image = Image.open(BytesIO(image_bytes))
+
+        if getattr(image, "is_animated", False):
+            image = convert_gif_to_static(image)
+        else:
+            image = image.convert("L")
+
+        result = predict_captcha_from_pil(image)
+        emit("prediction_result", {"text": result})
+    except Exception as e:
+        emit("prediction_error", {"error": str(e)})
 
 if __name__ == "__main__":
-    from waitress import serve
     port = int(os.environ.get("PORT", 5000))
-    serve(app, host="0.0.0.0", port=port)
+    socketio.run(app, host="0.0.0.0", port=port)
